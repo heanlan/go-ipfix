@@ -490,6 +490,8 @@ func (a *AggregationProcess) aggregateRecords(incomingRecord, existingRecord ent
 	if a.aggregateElements == nil {
 		return nil
 	}
+	srcns, _, _ := incomingRecord.GetInfoElementWithValue("sourcePodNamespace")
+	klog.InfoS("Logging...", "sourcePodNamespace", srcns.GetStringValue())
 	isLatest := false
 	var prevFlowEndSeconds, flowEndSecondsDiff uint32
 	if ieWithValue, _, exist := incomingRecord.GetInfoElementWithValue("flowEndSeconds"); exist {
@@ -516,6 +518,9 @@ func (a *AggregationProcess) aggregateRecords(incomingRecord, existingRecord ent
 				return nil
 			}
 			flowEndSecondsDiff = incomingVal - prevFlowEndSeconds
+			klog.InfoS("Logging...", "incomingVal", incomingVal)
+			klog.InfoS("Logging...", "prevFlowEndSeconds", prevFlowEndSeconds)
+			klog.InfoS("Logging...", "flowEndSecondsDiff", flowEndSecondsDiff)
 		}
 	}
 	for _, element := range a.aggregateElements.NonStatsElements {
@@ -555,17 +560,25 @@ func (a *AggregationProcess) aggregateRecords(incomingRecord, existingRecord ent
 		isDelta := strings.Contains(element, "Delta")
 		if ieWithValue, _, exist := incomingRecord.GetInfoElementWithValue(element); exist {
 			incomingVal := ieWithValue.GetUnsigned64Value()
+			if element == "octetTotalCount" {
+				klog.InfoS("Logging...", "octetTotalCount", incomingVal)
+			}
 			// Update the source fields in antreaSourceStatsElements list
 			if fillSrcStats {
 				if srcExistingIeWithValue, _, exist := existingRecord.GetInfoElementWithValue(antreaSourceStatsElements[i]); exist {
 					existingVal := srcExistingIeWithValue.GetUnsigned64Value()
 					if !isDelta {
 						srcExistingIeWithValue.SetUnsigned64Value(incomingVal)
+						klog.InfoS("Logging...", "existingVal", existingVal)
+						klog.InfoS("Logging...", "incomingVal <= existingVal", incomingVal <= existingVal)
 						switch antreaSourceStatsElements[i] {
 						case "octetTotalCountFromSourceNode":
 							totalCountDiff = incomingVal - existingVal
+							klog.InfoS("Logging...", "totalCountDiff", totalCountDiff)
 						case "reverseOctetTotalCountFromSourceNode":
 							reverseTotalCountDiff = incomingVal - existingVal
+							totalCountDiff = incomingVal - existingVal
+							klog.InfoS("Logging...", "totalCountDiff", totalCountDiff)
 						}
 					} else {
 						srcExistingIeWithValue.SetUnsigned64Value(incomingVal + existingVal)
@@ -580,11 +593,15 @@ func (a *AggregationProcess) aggregateRecords(incomingRecord, existingRecord ent
 					existingVal := dstExistingIeWithValue.GetUnsigned64Value()
 					if !isDelta {
 						dstExistingIeWithValue.SetUnsigned64Value(incomingVal)
+						klog.InfoS("Logging...", "existingVal", existingVal)
+						klog.InfoS("Logging...", "incomingVal <= existingVal", incomingVal <= existingVal)
 						switch antreaDestinationStatsElements[i] {
 						case "octetTotalCountFromDestinationNode":
 							totalCountDiff = incomingVal - existingVal
+							klog.InfoS("Logging...", "totalCountDiff", totalCountDiff)
 						case "reverseOctetTotalCountFromDestinationNode":
 							reverseTotalCountDiff = incomingVal - existingVal
+							klog.InfoS("Logging...", "totalCountDiff", totalCountDiff)
 						}
 					} else {
 						dstExistingIeWithValue.SetUnsigned64Value(incomingVal + existingVal)
@@ -625,6 +642,8 @@ func (a *AggregationProcess) aggregateRecords(incomingRecord, existingRecord ent
 	throughput := totalCountDiff * 8 / uint64(flowEndSecondsDiff)
 	reverseThroughput := reverseTotalCountDiff * 8 / uint64(flowEndSecondsDiff)
 	throughputVals := []uint64{throughput, reverseThroughput}
+	klog.InfoS("Logging...", "uint64(flowEndSecondsDiff)", uint64(flowEndSecondsDiff), "totalCountDiff * 8", totalCountDiff*8)
+	klog.InfoS("Logging...", "throughput", throughput, "reverseThroughput", reverseThroughput)
 	for i, element := range antreaThroughputElements {
 		if fillSrcStats {
 			ie, _, _ := existingRecord.GetInfoElementWithValue(antreaSourceThroughputElements[i])
