@@ -283,6 +283,15 @@ func (a *AggregationProcess) ForAllExpiredFlowRecordsDo(callback FlowKeyRecordMa
 			}
 			continue
 		}
+
+		src, _, _ := pqItem.flowRecord.Record.GetInfoElementWithValue("sourcePodName")
+		ts, _, _ := pqItem.flowRecord.Record.GetInfoElementWithValue("flowEndSeconds")
+		if strings.Contains(src.GetStringValue(), "web") || strings.Contains(src.GetStringValue(), "alpine") {
+			klog.InfoS("Logging... sendFlowKeyRecord", "src", src, "conn", pqItem.flowKey, "active", pqItem.activeExpireTime.Before(currTime), "inactive", pqItem.inactiveExpireTime.Before(currTime))
+			klog.InfoS("Logging... sendFlowKeyRecord", "flowEndSeconds", ts)
+			klog.Info("\n")
+		}
+
 		err := callback(*pqItem.flowKey, pqItem.flowRecord)
 		if err != nil {
 			return fmt.Errorf("callback execution failed for popped flow record with key: %v, record: %v, error: %v", pqItem.flowKey, pqItem.flowRecord, err)
